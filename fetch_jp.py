@@ -10,3 +10,5 @@ for c in CODES:
         rows.append([c, d.strftime("%Y-%m-%d"), r.Open, r.High, r.Low, r.Close, int(r.Volume)])
 os.makedirs("data", exist_ok=True)
 pd.DataFrame(rows, columns=["code","date","open","high","low","close","volume"]).to_csv("data/latest.csv", index=False)
+from datetime import datetime, timezone, timedelta
+open("data/updated_at.txt", "w").write(datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M"))

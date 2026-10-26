@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import yfinance as yf
 
-CODES = ["6501","6503","6504","6508","6622","5803","5801","5802","7011","1942","1306"]
+CODES = ["6501","6503","6504","6508","6622","5803","5801","5802","7011","1942","8473","5016","4385","1306"]
 rows = []
 for c in CODES:
     df = yf.Ticker(f"{c}.T").history(period="4mo", interval="1d", auto_adjust=False).tail(60)

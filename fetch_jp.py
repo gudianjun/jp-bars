@@ -1,8 +1,11 @@
 import os
+import sys
+from datetime import datetime, timezone, timedelta
+
 import pandas as pd
 import yfinance as yf
 
-CODES = CODES = [
+CODES = [
     # 原有 14 个（顺序不变）
     "6501","6503","6504","6508","6622","5803","5801","5802","7011","1942",
     "8473","5016","4385","1306",
@@ -15,12 +18,30 @@ CODES = CODES = [
     "9433","8316","4452","8593","8058","9278","9104","9501","3103","285A",
     "6166","5019","9508","5401",
 ]
+DAYS = 80  # 每只保留的交易日数（50 日线 + 20 日回看需要 ≥ 71）
+
 rows = []
+failed = []
 for c in CODES:
-    df = yf.Ticker(f"{c}.T").history(period="4mo", interval="1d", auto_adjust=False).tail(80)
-    for d, r in df.iterrows():
-        rows.append([c, d.strftime("%Y-%m-%d"), r.Open, r.High, r.Low, r.Close, int(r.Volume)])
+    try:
+        df = yf.Ticker(f"{c}.T").history(period="6mo", interval="1d", auto_adjust=False)
+        df = df.dropna(subset=["Open", "High", "Low", "Close", "Volume"]).tail(DAYS)
+        if df.empty:
+            failed.append(c)
+            continue
+        for d, r in df.iterrows():
+            rows.append([c, d.strftime("%Y-%m-%d"), r.Open, r.High, r.Low, r.Close, int(r.Volume)])
+    except Exception as e:  # 单只失败不中断整体
+        print(f"FAILED {c}: {e}")
+        failed.append(c)
+
+print(f"ok={len(CODES) - len(failed)} failed={failed}")
+
+# 超过一半取不到，视为数据源故障：不覆盖已有 CSV，让本次运行失败
+if len(failed) > len(CODES) // 2:
+    sys.exit("too many failures, keep previous data/latest.csv")
+
 os.makedirs("data", exist_ok=True)
 pd.DataFrame(rows, columns=["code","date","open","high","low","close","volume"]).to_csv("data/latest.csv", index=False)
-from datetime import datetime, timezone, timedelta
 open("data/updated_at.txt", "w").write(datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M"))
+open("data/failed.txt", "w").write(",".join(failed))
